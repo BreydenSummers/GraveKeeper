@@ -32,3 +32,45 @@ venv.bak/
 .cursorignore
 .cursorindexingignore
 
+# GraveKeeper specific ignores
+# Data directory containing downloaded files, processed data, and results
+data/
+# Downloaded files
+downloads/
+# Processed files
+processed/
+# Temporary files
+temp/
+# Log files
+*.log
+logs/
+# Results and output files
+results/
+# AI model files (if any)
+*.model
+*.pkl
+*.h5
+# Large files that might be downloaded
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.jpg
+*.jpeg
+*.png
+*.tiff
+*.bmp
+# Cache files
+.cache/
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
