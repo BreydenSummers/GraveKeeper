@@ -150,9 +150,21 @@ class TextChunker:
                 file_path = result.get('file_path', '')
                 text_content = result.get('text_content', '')
                 
+                # Try to get original link from metadata or reconstruct from filename
+                original_link = result.get('original_link', 'Unknown')
+                if original_link == 'Unknown':
+                    # Try to reconstruct from filename patterns
+                    filename = Path(file_path).name
+                    if filename.startswith('box_file_'):
+                        original_link = f"Box file: {filename}"
+                    elif filename.startswith('file_'):
+                        original_link = f"Downloaded file: {filename}"
+                    else:
+                        original_link = f"File: {filename}"
+                
                 chunks = self.chunk_text(text_content, file_path)
                 
-                # Add extraction metadata to each chunk
+                # Add extraction metadata and original link to each chunk
                 for chunk in chunks:
                     chunk['extraction_metadata'] = {
                         'extraction_method': result.get('extraction_method'),
@@ -160,6 +172,7 @@ class TextChunker:
                         'file_extension': result.get('file_extension'),
                         'file_category': result.get('file_category')
                     }
+                    chunk['original_link'] = original_link
                 
                 all_chunks.extend(chunks)
         

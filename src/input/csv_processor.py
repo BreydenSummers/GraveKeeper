@@ -75,7 +75,9 @@ class CSVProcessor:
                     'row_data': row.to_dict()
                 }
                 
-                if is_supported_file_type(link):
+                # For cloud storage links, accept them even without file extensions
+                # File type will be determined after download
+                if is_supported_file_type(link) or self._is_cloud_storage_link(link):
                     valid_links.append(link_info)
                 else:
                     link_info['reason'] = 'Unsupported file type'
@@ -124,16 +126,17 @@ class CSVProcessor:
             Extracted filename
         """
         try:
-            parsed = urlparse(link)
-            filename = Path(parsed.path).name
-            
-            if not filename or '.' not in filename:
-                # Generate filename from URL
-                filename = f"file_{hash(link) % 10000}"
-            
-            return filename
+            # Always use hash-based filenames for safety
+            if 'box.com' in link.lower() or 'public.boxcloud.com' in link.lower():
+                return f"box_file_{hash(link) % 100000}"
+            elif 'sharepoint.com' in link.lower():
+                return f"sharepoint_file_{hash(link) % 100000}"
+            elif 'drive.google.com' in link.lower():
+                return f"gdrive_file_{hash(link) % 100000}"
+            else:
+                return f"downloaded_file_{hash(link) % 100000}"
         except Exception:
-            return f"file_{hash(link) % 10000}"
+            return f"file_{hash(link) % 100000}"
     
     def _get_file_type(self, link: str) -> str:
         """
@@ -145,7 +148,43 @@ class CSVProcessor:
         Returns:
             File extension
         """
-        return Path(link).suffix.lower()
+        try:
+            # Use urlparse to safely extract the path without creating a Path object
+            parsed = urlparse(link)
+            path = parsed.path
+            
+            # Find the last dot in the path
+            last_dot = path.rfind('.')
+            if last_dot != -1:
+                return path[last_dot:].lower()
+            else:
+                return ''
+        except Exception:
+            return ''
+    
+    def _is_cloud_storage_link(self, link: str) -> bool:
+        """
+        Check if link is from a supported cloud storage service
+        
+        Args:
+            link: URL to check
+            
+        Returns:
+            True if it's a cloud storage link
+        """
+        link_lower = link.lower()
+        
+        cloud_domains = [
+            'box.com',
+            'public.boxcloud.com',
+            'sharepoint.com',
+            'onedrive.live.com',
+            '1drv.ms',
+            'drive.google.com',
+            'dropbox.com'
+        ]
+        
+        return any(domain in link_lower for domain in cloud_domains)
     
     def _get_source_type(self, link: str) -> str:
         """
@@ -159,7 +198,7 @@ class CSVProcessor:
         """
         link_lower = link.lower()
         
-        if 'box.com' in link_lower or 'box.com' in link_lower:
+        if 'box.com' in link_lower:
             return 'box'
         elif 'sharepoint.com' in link_lower or 'sharepoint' in link_lower:
             return 'sharepoint'

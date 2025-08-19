@@ -21,7 +21,95 @@ def get_file_extension(file_path: str) -> str:
     Returns:
         File extension with dot (e.g., '.pdf')
     """
-    return Path(file_path).suffix.lower()
+    # Check if it's a URL (starts with http/https)
+    if file_path.startswith(('http://', 'https://')):
+        # Use urlparse to safely extract extension from URL
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(file_path)
+            path = parsed.path
+            
+            # Find the last dot in the path
+            last_dot = path.rfind('.')
+            if last_dot != -1:
+                return path[last_dot:].lower()
+            else:
+                return ''
+        except Exception:
+            return ''
+    
+    # For local file paths, use Path
+    try:
+        extension = Path(file_path).suffix.lower()
+        
+        # If no extension, try to detect from file content
+        if not extension and Path(file_path).exists():
+            extension = _detect_file_extension_from_content(Path(file_path))
+        
+        return extension
+    except Exception:
+        return ''
+
+def _detect_file_extension_from_content(file_path: Path) -> str:
+    """
+    Detect file extension by examining file content
+    
+    Args:
+        file_path: Path to file
+        
+    Returns:
+        Detected file extension with dot (e.g., '.pdf')
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            # Read first few bytes to detect file type
+            header = f.read(8)
+            
+            # PDF files start with %PDF
+            if header.startswith(b'%PDF'):
+                return '.pdf'
+            
+            # ZIP files (including .docx, .pptx, .xlsx) start with PK
+            if header.startswith(b'PK'):
+                # Check if it's a PowerPoint file by looking for slide files
+                try:
+                    import zipfile
+                    with zipfile.ZipFile(file_path, 'r') as zip_file:
+                        slide_files = [f for f in zip_file.namelist() if f.startswith('ppt/slides/')]
+                        if slide_files:
+                            return '.pptx'
+                        
+                        # Check for Word document
+                        word_files = [f for f in zip_file.namelist() if f.startswith('word/')]
+                        if word_files:
+                            return '.docx'
+                        
+                        # Check for Excel document
+                        excel_files = [f for f in zip_file.namelist() if f.startswith('xl/')]
+                        if excel_files:
+                            return '.xlsx'
+                        
+                        # Generic ZIP
+                        return '.zip'
+                except Exception:
+                    return '.zip'
+            
+            # Check for other file types
+            if header.startswith(b'\xff\xd8\xff'):  # JPEG
+                return '.jpg'
+            elif header.startswith(b'\x89PNG\r\n\x1a\n'):  # PNG
+                return '.png'
+            elif header.startswith(b'GIF8'):  # GIF
+                return '.gif'
+            elif header.startswith(b'BM'):  # BMP
+                return '.bmp'
+            elif header.startswith(b'II*\x00') or header.startswith(b'MM\x00*'):  # TIFF
+                return '.tiff'
+            
+    except Exception as e:
+        logger.warning(f"Error detecting file extension for {file_path}: {e}")
+    
+    return ''
 
 def is_supported_file_type(file_path: str) -> bool:
     """
@@ -143,7 +231,18 @@ def extract_filename_from_url(url: str) -> str:
     parsed = urlparse(url)
     filename = os.path.basename(parsed.path)
     
-    if not filename or '.' not in filename:
+    # Handle very long URLs by using a hash-based filename
+    if len(url) > 200:  # If URL is very long, use hash-based filename
+        # Try to extract meaningful info from URL
+        if 'box.com' in url.lower() or 'public.boxcloud.com' in url.lower():
+            filename = f"box_file_{hash(url) % 100000}"
+        elif 'sharepoint.com' in url.lower():
+            filename = f"sharepoint_file_{hash(url) % 100000}"
+        elif 'drive.google.com' in url.lower():
+            filename = f"gdrive_file_{hash(url) % 100000}"
+        else:
+            filename = f"downloaded_file_{hash(url) % 100000}"
+    elif not filename or '.' not in filename:
         # Try to get filename from content-disposition or generate one
         filename = f"downloaded_file_{hash(url) % 10000}"
     

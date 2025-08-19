@@ -82,16 +82,34 @@ python src/main.py \
   --verbose
 ```
 
+
 ### Command Line Options
 
-- `-c, --csv-file`: Path to CSV file containing links (required)
+- `-c, --csv-file`: Path to CSV file containing links
 - `-l, --link-column`: Name of column containing links (default: "link")
+- `-f, --local-files`: One or more local document files to process directly (bypasses CSV)
 - `-o, --output-dir`: Output directory for results
 - `--chunk-size`: Text chunk size for AI processing (default: 1000)
 - `--skip-download`: Skip download step (use existing files)
 - `--skip-ocr`: Skip OCR/text extraction step
 - `--skip-ai`: Skip AI processing step
+- `--disable-pdf-ocr`: Disable OCR on PDF images (by default, OCR is run on all PDF pages)
+- `--ai-provider`: AI provider to use (default: ollama)
+- `--ai-model`: AI model to use (provider-specific, e.g. llama3.1, qwen2.5vl)
+- `--ai-host`: AI host/base URL (provider-specific)
 - `-v, --verbose`: Enable verbose logging
+
+#### Modes
+- You must provide either `--csv-file` or `--local-files` (not both).
+- In local file mode, you can process any supported document directly.
+
+#### PDF OCR
+- By default, OCR is run on every page of every PDF, even if text extraction succeeds. Use `--disable-pdf-ocr` to turn this off.
+
+#### Multi-Model AI (Ollama + Qwen2.5VL)
+- The pipeline supports running multiple models for sensitive data detection.
+- For every image processed with OCR, the text is analyzed by both the main model (e.g. llama3.1) and Qwen2.5VL. Qwen2.5VL results are included in the extraction metadata.
+- The file name is also included in the AI and heuristic analysis for better detection.
 
 ### CSV Format
 
@@ -218,3 +236,54 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [ ] Support for batch processing with resume capability
 - [ ] Integration with external AI services
 - [ ] Real-time processing dashboard
+
+
+## AI Providers & Multi-Model Support
+
+
+### Local (Ollama)
+
+#### Install Ollama
+
+**macOS:**
+```bash
+brew install ollama
+```
+
+**Ubuntu / Debian:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Windows:**
+- Download the Windows installer from [Ollama's official website](https://ollama.com/download) and run it.
+
+#### Start the Ollama Server
+```bash
+ollama serve
+# (runs in the background on port 11434)
+```
+
+#### Pull Models
+You must pull each model you want to use (e.g. llama3.1, qwen2.5vl):
+```bash
+ollama pull llama3.1
+ollama pull qwen2.5vl
+# List all available models:
+ollama list
+```
+
+#### Run GraveKeeper with Ollama
+```bash
+python src/main.py -c links.csv --ai-provider ollama --ai-model llama3.1 --ai-host http://localhost:11434
+```
+
+- `--ai-provider`: currently `ollama`
+- `--ai-model`: model name available in Ollama (`ollama list`), e.g. `llama3.1`, `qwen2.5vl`
+- `--ai-host`: base URL (default `http://localhost:11434`)
+
+#### Multi-Model OCR Analysis
+- For every image processed with OCR, the text is analyzed by both the main model and Qwen2.5VL. Qwen2.5VL results are included in the extraction metadata for each image.
+- The file name is always included in the AI and heuristic analysis for improved detection.
+
+The detector merges provider results with simple pattern heuristics (emails, phones, SSNs, credit cards) for better recall.

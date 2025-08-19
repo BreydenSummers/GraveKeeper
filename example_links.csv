@@ -1,6 +1,0 @@
-link,description,source,priority
-https://example.com/sample.pdf,Sample PDF document,example,high
-https://box.com/s/abc123def456,Contract document from Box,box,medium
-https://sharepoint.com/sites/company/documents/report.docx,Company report,sharepoint,high
-https://drive.google.com/file/d/1ABC123DEF456/view,Presentation slides,google_drive,low
-https://dropbox.com/s/xyz789/file.txt,Text file from Dropbox,dropbox,medium 
